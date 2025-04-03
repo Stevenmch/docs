@@ -1,78 +1,59 @@
-# Documentación de la Pipeline `PL_GLB_IntegrationRuntimeSQL_MSSQL`
+# Documentación de la Pipeline: PL_GLB_IntegrationRuntimeSQL_MSSQL
 
-## Descripción General
-Esta pipeline ejecuta consultas de base de datos en un servidor on-premise. Se encarga de procesar datos, manejar errores y enviar eventos de orquestación. 
+## Descripción
+Esta pipeline ejecuta consultas en una base de datos on-premise y gestiona la extracción y almacenamiento de datos. 
 
+### Flujo General
 ```mermaid
 graph TD;
-    A[Inicio] -->|Ejecuta| B[processDateFolder];
-    B -->|Inicializa| C[initErrors];
-    C -->|Verifica| D[AddDate];
-    D -->|Configura variables| E[SetAllVariables];
-    E -->|Ejecuta queries| F[loopQueriesFolders];
-    F -->|Verifica errores| G[sendEvent];
-    G -->|Finaliza ejecución| H[checkExecution];
-    H -->|Si falla| I[pipelineWithError];
+    processDateFolder[Set Variable: processDateFolder] --> initErrors[Set Variable: errors]
+    initErrors --> AddDate{If AddDate}
+    AddDate -->|True| datePrefix[Set Variable: datePrefix]
+    AddDate -->|False| SetAllVariables
+    SetAllVariables --> loopQueriesFolders[For Each: loopQueriesFolders]
+    loopQueriesFolders --> onPremQuery[Copy: Execute SQL Query]
+    onPremQuery -->|Failed| AppendErrors[Append Variable: errors]
+    loopQueriesFolders --> sendEvent[Execute Pipeline: Send Event]
+    sendEvent --> checkExecution{If Execution Success}
+    checkExecution -->|False| pipelineWithError[Fail: Pipeline with Errors]
 ```
 
-## Actividades
+## Entradas (Inputs)
+La pipeline recibe los siguientes parámetros:
+- **fileName** (*string*): Nombre del archivo de salida. Por defecto "None".
+- **addDate** (*bool*): Si se debe agregar una fecha al nombre del archivo.
+- **addDateFormat** (*string*): Formato de la fecha a agregar.
+- **event** (*string*): Evento de orquestación.
+- **queriesAndFolder** (*array*): Lista de carpetas y consultas SQL a ejecutar.
+- **queryTimeout** (*string*): Tiempo máximo de espera para cada consulta.
+- **containerDestination** (*string*): Contenedor de destino en Azure.
+- **secretName_src** (*string*): Nombre del secreto de autenticación.
+- **ingestionSource** (*string*): Fuente de datos de ingesta.
+- **processDate** (*string*): Fecha de procesamiento.
+- **container** (*string*): Contenedor donde se almacenarán los datos.
 
-### `processDateFolder`
-- **Tipo:** `SetVariable`
-- **Función:** Inicializa la variable `processDateFolder` con la fecha actual en formato `yyyyMMdd`.
+## Salidas (Outputs)
+La pipeline genera los siguientes outputs:
+- **Archivos CSV**: Los resultados de las consultas SQL se guardan en archivos CSV dentro del contenedor especificado.
+- **Eventos de Orquestación**: Envío de eventos para informar sobre el éxito o fallo del proceso.
+- **Errores**: Si hay errores en la ejecución, se almacenan en la variable `errors` y se reportan en el evento final.
 
-### `initErrors`
-- **Tipo:** `SetVariable`
-- **Función:** Inicializa la variable `errors` como un array vacío.
+## Descripción de Actividades
+### 1. Inicialización de Variables
+- **processDateFolder**: Define la fecha de procesamiento en formato `yyyyMMdd`.
+- **initErrors**: Inicializa la variable de errores.
 
-### `AddDate`
-- **Tipo:** `IfCondition`
-- **Función:** Agrega prefijo de fecha a los archivos si `addDate` está habilitado.
+### 2. Control de Nombre de Archivo
+- **AddDate**: Evalúa si se debe agregar una fecha al nombre del archivo y establece la variable `datePrefix`.
 
-### `sendEvent`
-- **Tipo:** `ExecutePipeline`
-- **Función:** Llama a `PL_GLB_sendOrchestrationEvent` para enviar eventos de ejecución.
+### 3. Ejecución de Consultas SQL
+- **loopQueriesFolders**: Itera sobre la lista de consultas y carpetas.
+- **onPremQuery**: Ejecuta las consultas SQL y almacena los resultados.
+- **AppendErrors**: Registra errores en caso de fallo en la ejecución.
 
-### `loopQueriesFolders`
-- **Tipo:** `ForEach`
-- **Función:** Ejecuta consultas en SQL Server y almacena los resultados en Azure Blob Storage.
+### 4. Gestión de Resultados y Orquestación
+- **sendEvent**: Notifica el estado del proceso.
+- **checkExecution**: Valida si hubo errores y en caso de fallo, genera una interrupción.
 
-### `checkExecution`
-- **Tipo:** `IfCondition`
-- **Función:** Verifica si hubo errores en la ejecución y, en caso de fallo, termina la pipeline con error.
-
-## Parámetros
-
-| Parámetro            | Tipo   | Valor por Defecto |
-|----------------------|--------|------------------|
-| fileName            | string | None             |
-| addDate             | bool   | true             |
-| addDateFormat       | string | yyyyMMdd         |
-| event              | string | None             |
-| queriesAndFolder   | array  | Lista de queries |
-| queryTimeout       | string | 00:05:00         |
-| containerDestination | string | -               |
-| secretName_src     | string | -               |
-| ingestionSource    | string | None            |
-| processDate       | string | None            |
-| container         | string | staging         |
-
-## Variables
-
-| Variable            | Tipo   |
-|---------------------|--------|
-| errors             | Array  |
-| datePrefix         | String |
-| numberOfFile       | String |
-| tempError         | Array  |
-| folder            | String |
-| path              | String |
-| error             | String |
-| outputs           | Array  |
-| timestamp         | String |
-| folder_variables  | Array  |
-| testOutput        | String |
-| processDateFolder | String |
-
-## Última publicación
-- **Fecha:** 2022-02-04T21:13:21Z
+## Conclusión
+Esta pipeline permite la ejecución eficiente de consultas SQL en una base de datos on-premise y la gestión de sus resultados en Azure, asegurando una orquestación adecuada mediante eventos y control de errores.
