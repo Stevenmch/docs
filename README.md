@@ -1,88 +1,78 @@
-# Documentación del Proyecto
+# Documentación de la Pipeline `PL_GLB_IntegrationRuntimeSQL_MSSQL`
 
-## General
-
-### Introducción
-Este código permite a los usuarios documentar procesos mediante comandos de voz y generar documentación automática. Utiliza reconocimiento de voz para transcribir y almacenar información de manera eficiente.
-
-### Requisitos previos
-- **Lenguaje:** Python
-- **Versión:** 3.8+
-- **Dependencias:** SpeechRecognition, OpenAI API, AWS SDK, Flask
-
-### Instalación y configuración
-1. Clona el repositorio: `git clone https://github.com/usuario/proyecto.git`
-2. Instala las dependencias: `pip install -r requirements.txt`
-3. Configura las credenciales de AWS y OpenAI en el archivo `.env`
-
-### Uso básico
-```python
-from speech_recognition import Recognizer, Microphone
-recognizer = Recognizer()
-with Microphone() as source:
-    audio = recognizer.listen(source)
-    text = recognizer.recognize_google(audio)
-    print(text)
-```
-
-## Intermedio
-
-### Estructura del proyecto
-```
-proyecto/
-│── app/
-│   │── main.py
-│   │── recognizer.py
-│   │── storage.py
-│── docs/
-│── tests/
-│── requirements.txt
-│── README.md
-```
-
-### Explicación de los principales módulos o clases
-- **main.py:** Maneja la lógica principal de la aplicación.
-- **recognizer.py:** Se encarga del reconocimiento de voz.
-- **storage.py:** Almacena y recupera datos desde AWS S3.
-
-### Cómo contribuir
-1. Realiza un fork del repositorio.
-2. Crea una nueva rama con tu feature: `git checkout -b feature-nueva`
-3. Sube tus cambios y abre un pull request.
-
-## Avanzado
-
-### Flujo de ejecución
-El código sigue este flujo principal:
-
-1. El usuario inicia la grabación de voz.
-2. La API de reconocimiento de voz transcribe el audio a texto.
-3. La transcripción se muestra en la interfaz de usuario.
-4. Si el usuario detiene la grabación, el texto se guarda en AWS S3.
-5. Si el usuario hace una pregunta, se consulta la documentación guardada en S3.
-6. La OpenAI API procesa la consulta y devuelve una respuesta.
-7. La respuesta se muestra en la interfaz y puede ser leída en voz alta.
+## Descripción General
+Esta pipeline ejecuta consultas de base de datos en un servidor on-premise. Se encarga de procesar datos, manejar errores y enviar eventos de orquestación. 
 
 ```mermaid
 graph TD;
-    A[Usuario] -->|Habla| B[SpeechRecognition API];
-    B -->|Texto transcrito| C[Interfaz de usuario];
-    C -->|Guarda en S3| D[AWS S3];
-    C -->|Consulta documentación| E[OpenAI API];
-    D -->|Recupera documentos| C;
-    E -->|Responde con información procesada| C;
+    A[Inicio] -->|Ejecuta| B[processDateFolder];
+    B -->|Inicializa| C[initErrors];
+    C -->|Verifica| D[AddDate];
+    D -->|Configura variables| E[SetAllVariables];
+    E -->|Ejecuta queries| F[loopQueriesFolders];
+    F -->|Verifica errores| G[sendEvent];
+    G -->|Finaliza ejecución| H[checkExecution];
+    H -->|Si falla| I[pipelineWithError];
 ```
 
-### Casos de uso avanzados
-- Integración con Google Drive para almacenamiento adicional.
-- Exportación automática a formatos como PDF y Markdown.
+## Actividades
 
-### Convenciones de estilo y mejores prácticas
-- Seguir PEP8 para Python.
-- Uso de docstrings en funciones clave.
-- Modularización para facilitar mantenimiento.
+### `processDateFolder`
+- **Tipo:** `SetVariable`
+- **Función:** Inicializa la variable `processDateFolder` con la fecha actual en formato `yyyyMMdd`.
 
-### Errores comunes y solución de problemas
-- **Error en la transcripción:** Verificar que el micrófono esté funcionando.
-- **Falla en almacenamiento:** Revisar credenciales de AWS.
-- **API de OpenAI no responde:** Asegurar que la clave API sea válida y no esté sobre el límite de uso.
+### `initErrors`
+- **Tipo:** `SetVariable`
+- **Función:** Inicializa la variable `errors` como un array vacío.
+
+### `AddDate`
+- **Tipo:** `IfCondition`
+- **Función:** Agrega prefijo de fecha a los archivos si `addDate` está habilitado.
+
+### `sendEvent`
+- **Tipo:** `ExecutePipeline`
+- **Función:** Llama a `PL_GLB_sendOrchestrationEvent` para enviar eventos de ejecución.
+
+### `loopQueriesFolders`
+- **Tipo:** `ForEach`
+- **Función:** Ejecuta consultas en SQL Server y almacena los resultados en Azure Blob Storage.
+
+### `checkExecution`
+- **Tipo:** `IfCondition`
+- **Función:** Verifica si hubo errores en la ejecución y, en caso de fallo, termina la pipeline con error.
+
+## Parámetros
+
+| Parámetro            | Tipo   | Valor por Defecto |
+|----------------------|--------|------------------|
+| fileName            | string | None             |
+| addDate             | bool   | true             |
+| addDateFormat       | string | yyyyMMdd         |
+| event              | string | None             |
+| queriesAndFolder   | array  | Lista de queries |
+| queryTimeout       | string | 00:05:00         |
+| containerDestination | string | -               |
+| secretName_src     | string | -               |
+| ingestionSource    | string | None            |
+| processDate       | string | None            |
+| container         | string | staging         |
+
+## Variables
+
+| Variable            | Tipo   |
+|---------------------|--------|
+| errors             | Array  |
+| datePrefix         | String |
+| numberOfFile       | String |
+| tempError         | Array  |
+| folder            | String |
+| path              | String |
+| error             | String |
+| outputs           | Array  |
+| timestamp         | String |
+| folder_variables  | Array  |
+| testOutput        | String |
+| processDateFolder | String |
+
+## Última publicación
+- **Fecha:** 2022-02-04T21:13:21Z
