@@ -57,3 +57,4 @@ Se recomienda seguir la guía de estilo de JavaScript y AWS para un código limp
   - Solución: Asegúrate de que tu navegador es compatible.
 - **Error: No se pueden subir archivos a S3**
   - Solución: Verifica las credenciales de AWS.
+}
