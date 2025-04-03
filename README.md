@@ -1,32 +1,78 @@
-# Mintlify Starter Kit
+# Documentación del Código
 
-Click on `Use this template` to copy the Mintlify starter kit. The starter kit contains examples including
+## Introducción
+Este documento describe el funcionamiento del código que implementa reconocimiento de voz en un navegador utilizando la API de SpeechRecognition. Además, almacena las transcripciones en AWS S3 y permite realizar preguntas basadas en la documentación almacenada.
 
-- Guide pages
-- Navigation
-- Customizations
-- API Reference pages
-- Use of popular components
+## Arquitectura
 
-### Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mintlify) to preview the documentation changes locally. To install, use the following command
-
-```
-npm i -g mintlify
-```
-
-Run the following command at the root of your documentation (where docs.json is)
-
-```
-mintlify dev
+```mermaid
+graph TD;
+    A[Usuario] -->|Habla| B[SpeechRecognition API];
+    B -->|Texto transcrito| C[Interfaz de usuario];
+    C -->|Guarda en S3| D[AWS S3];
+    C -->|Consulta documentación| E[OpenAI API];
+    D -->|Recupera documentos| C;
+    E -->|Responde con información procesada| C;
 ```
 
-### Publishing Changes
+## Código Fuente
 
-Install our Github App to auto propagate changes from your repo to your deployment. Changes will be deployed to production automatically after pushing to the default branch. Find the link to install on your dashboard. 
+```javascript
+// Verifica compatibilidad con SpeechRecognition
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
+    alert("Tu navegador no soporta el reconocimiento de voz.");
+} else {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "es-ES";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    let accumulatedText = "";
+    
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        accumulatedText += transcript + " ";
+        console.log("Texto reconocido:", transcript);
+    };
+    
+    recognition.onerror = (event) => {
+        console.error("Error en reconocimiento:", event.error);
+    };
+}
+```
 
-#### Troubleshooting
+## Almacenamiento en AWS S3
 
-- Mintlify dev isn't running - Run `mintlify install` it'll re-install dependencies.
-- Page loads as a 404 - Make sure you are running in a folder with `docs.json`
+El código guarda las transcripciones en un bucket de AWS S3. Cada usuario tiene un identificador único almacenado en `localStorage`.
+
+```javascript
+// Configuración de AWS
+AWS.config.region = "us-east-1";
+AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+    IdentityPoolId: "us-east-1:eb1fa3d7-3756-4cf6-9027-9f30eeb538b1"
+});
+const s3 = new AWS.S3();
+
+function subirTextoAS3(texto) {
+    let userId = localStorage.getItem("userId") || crypto.randomUUID();
+    localStorage.setItem("userId", userId);
+    const params = {
+        Bucket: "documentations3",
+        Key: `anonymous/${userId}/project1/transcripcion-${Date.now()}.txt`,
+        Body: texto,
+        ContentType: "text/plain"
+    };
+    
+    s3.upload(params, function (err, data) {
+        if (err) {
+            console.error("Error al subir archivo:", err);
+        } else {
+            console.log("Archivo subido con éxito:", data.Location);
+        }
+    });
+}
+```
+
+---
+
+Este documento explica el funcionamiento del sistema, su estructura y código clave. Si necesitas más detalles o modificaciones, házmelo saber.
