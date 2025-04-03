@@ -1,78 +1,59 @@
 # Documentación del Código
 
-## Introducción
-Este documento describe el funcionamiento del código que implementa reconocimiento de voz en un navegador utilizando la API de SpeechRecognition. Además, almacena las transcripciones en AWS S3 y permite realizar preguntas basadas en la documentación almacenada.
+## General
 
-## Arquitectura
+### Introducción
+Este código permite el reconocimiento de voz en navegadores compatibles con la API Web Speech, facilitando la documentación de procesos.
 
-```mermaid
-graph TD;
-    A[Usuario] -->|Habla| B[SpeechRecognition API];
-    B -->|Texto transcrito| C[Interfaz de usuario];
-    C -->|Guarda en S3| D[AWS S3];
-    C -->|Consulta documentación| E[OpenAI API];
-    D -->|Recupera documentos| C;
-    E -->|Responde con información procesada| C;
+### Requisitos previos
+- **Lenguaje**: JavaScript
+- **Navegador**: Compatible con Web Speech API
+- **Dependencias**: AWS SDK configurado para S3
+
+### Instalación y configuración
+1. Clonar el repositorio.
+2. Configurar las credenciales de AWS en el navegador.
+3. Ejecutar en un entorno con acceso a Web Speech API.
+
+### Uso básico
+Presiona el botón "Start Recording" para comenzar a transcribir el audio en texto y guardarlo en S3.
+
+## Intermedio
+
+### Estructura del proyecto
+El proyecto sigue esta estructura:
+
+```
+/proyecto
+│── index.html  # Interfaz gráfica
+│── script.js   # Lógica de reconocimiento de voz y almacenamiento
+│── aws-config.js  # Configuración de credenciales de AWS
 ```
 
-## Código Fuente
+### Explicación de los principales módulos o clases
+- `SpeechRecognition`: Maneja el reconocimiento de voz.
+- `AWS.S3`: Se encarga del almacenamiento en la nube.
 
-```javascript
-// Verifica compatibilidad con SpeechRecognition
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) {
-    alert("Tu navegador no soporta el reconocimiento de voz.");
-} else {
-    const recognition = new SpeechRecognition();
-    recognition.lang = "es-ES";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    let accumulatedText = "";
-    
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        accumulatedText += transcript + " ";
-        console.log("Texto reconocido:", transcript);
-    };
-    
-    recognition.onerror = (event) => {
-        console.error("Error en reconocimiento:", event.error);
-    };
-}
-```
+### Cómo contribuir
+Para contribuir, bifurca el repositorio, realiza cambios y envía un pull request.
 
-## Almacenamiento en AWS S3
+## Avanzado
 
-El código guarda las transcripciones en un bucket de AWS S3. Cada usuario tiene un identificador único almacenado en `localStorage`.
+### Flujo de ejecución
+1. El usuario inicia la grabación.
+2. El audio se convierte en texto.
+3. El texto se almacena en S3.
+4. Se pueden hacer consultas sobre los documentos guardados.
 
-```javascript
-// Configuración de AWS
-AWS.config.region = "us-east-1";
-AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-    IdentityPoolId: "us-east-1:eb1fa3d7-3756-4cf6-9027-9f30eeb538b1"
-});
-const s3 = new AWS.S3();
+### Casos de uso avanzados
+- Integración con otros servicios de almacenamiento.
+- Personalización de la interfaz de usuario.
 
-function subirTextoAS3(texto) {
-    let userId = localStorage.getItem("userId") || crypto.randomUUID();
-    localStorage.setItem("userId", userId);
-    const params = {
-        Bucket: "documentations3",
-        Key: `anonymous/${userId}/project1/transcripcion-${Date.now()}.txt`,
-        Body: texto,
-        ContentType: "text/plain"
-    };
-    
-    s3.upload(params, function (err, data) {
-        if (err) {
-            console.error("Error al subir archivo:", err);
-        } else {
-            console.log("Archivo subido con éxito:", data.Location);
-        }
-    });
-}
-```
+### Convenciones de estilo y mejores prácticas
+Se recomienda seguir la guía de estilo de JavaScript y AWS para un código limpio y mantenible.
 
----
-
-Este documento explica el funcionamiento del sistema, su estructura y código clave. Si necesitas más detalles o modificaciones, házmelo saber.
+### Errores comunes y solución de problemas
+- **Error: Reconocimiento de voz no disponible**
+  - Solución: Asegúrate de que tu navegador es compatible.
+- **Error: No se pueden subir archivos a S3**
+  - Solución: Verifica las credenciales de AWS.
