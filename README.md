@@ -1,7 +1,7 @@
 ## Diagrama de Flujo
 
 ```mermaid
-graph LR
+graph TB
 A[Carga del DOM] --> B{Contenido en dropArea?};
 B -- Sí --> C[Ocultar placeholder];
 B -- No --> D[Mostrar placeholder];
