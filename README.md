@@ -16,4 +16,4 @@ J --> I
 I --> B
 G --> K[Click en sendButton];
 K --> L[Extraer código];
-L --> M[Imprimir código];|
+L --> M[Imprimir código];
