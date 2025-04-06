@@ -2,15 +2,15 @@
 
 ```mermaid
 graph TD
-    A[Inicio: DOMContentLoaded] --> B[Obtener elementos];
-    B --> C[Definir funcion updatePlaceholder];
-    C --> D{dropArea contiene texto};
-    D -- Si --> E[Ocultar placeholder, habilitar sendButton, anadir clase enabled];
-    D -- No --> F[Mostrar placeholder, deshabilitar sendButton, quitar clase enabled];
+    A[Inicio] --> B[Obtener elementos];
+    B --> C[Definir función updatePlaceholder];
+    C --> D{¿dropArea contiene texto?};
+    D -- Sí --> E[Ocultar placeholder, habilitar botón, añadir clase];
+    D -- No --> F[Mostrar placeholder, deshabilitar botón, quitar clase];
     E --> G[Asignar listeners a dropArea];
     F --> G;
     G --> H[Llamar updatePlaceholder inicialmente];
-    H --> I[Asignar listener click a sendButton];
-    I --> J[Extraer codigo de dropArea];
-    J --> K[Imprimir codigo en consola];
+    H --> I[Asignar listener click a botón];
+    I --> J[Extraer código de dropArea];
+    J --> K[Imprimir código en consola];
     K --> L[Fin];
