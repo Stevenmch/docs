@@ -98,3 +98,44 @@ graph TD;
     I -- No --> R[SendEventOK_noData];
     R --> P;
 ```
+
+## 🧩 NTB\_Gen\_Write\_CSV\_to\_Datalake Notebook Details
+
+... (Descripción del notebook como antes) ...
+
+### 📊 Diagrama de Flujo del Notebook (Mermaid.js)
+
+```mermaid
+graph TD;
+    A[Inicio: Parsear Parámetros] --> B{¿Es JSON?};
+    B -- Sí --> C[Extraer Parámetros];
+    B -- No --> Error[Error: Parámetros no válidos];
+    C --> D[Definir Argumentos de Lectura];
+    D --> E[Definir Parámetros de Tabla];
+    E --> F[Definir Parámetros de Entorno];
+    F --> G[Obtener Cuenta de Almacenamiento];
+    G --> H[Obtener Información de Archivos Fuente];
+    H --> I{¿Existe la Tabla?};
+    I -- Sí --> J[Obtener Esquema Actual];
+    I -- No --> K[Esquema = Nulo];
+    J --> L[Cargar Archivos (con Esquema)];
+    K --> L;
+    L --> M{¿Hay Columnas para Encriptar?};
+    M -- Sí --> N[Encriptar Datos];
+    N --> O[Escribir Archivos Encriptados a Staging];
+    O --> P[Cargar Archivos Encriptados desde Staging];
+    M -- No --> P[Añadir Columna 'filename'];
+    P --> Q[Preparar Datos (processdate, businessdate)];
+    Q --> R[Definir Estrategia de Carga];
+    R --> S{¿Crear Tabla?};
+    S -- Sí --> T[Crear Tabla (Externa si es 'finance')];
+    S -- No --> U[Gestionar Particiones Duplicadas];
+    T --> V[Insertar Datos en la Tabla];
+    U --> V;
+    V --> W{¿Optimizar?};
+    W -- Sí --> X[Optimizar Particiones];
+    W -- No --> Y[Contar Filas Procesadas];
+    X --> Y;
+    Y --> Z[Eliminar Archivos Temporales (si es necesario)];
+    Z --> AA[Finalizar: Enviar Mensaje de Estado];
+```
