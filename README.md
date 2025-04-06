@@ -1,31 +1,78 @@
 
-# PL_Gen_STG_DTL Pipeline
+# Pipeline PL_Gen_STG_DTL
 
 ## ✅ Resumen
 
-This pipeline is designed to execute a Spark notebook job for data staging in a generic manner, without relying on an external orchestration framework. It dynamically constructs file paths, checks for the existence of data in a specified folder, and executes a Spark notebook if data is present. It also handles success and failure scenarios, sending events to a callback pipeline.
+Este pipeline está diseñado para ejecutar un trabajo de notebook de Spark para el staging de datos de forma genérica, sin depender de un framework de orquestación externo. Construye dinámicamente rutas de archivos, verifica la existencia de datos en una carpeta especificada y ejecuta un notebook de Spark si los datos están presentes. También maneja escenarios de éxito y fracaso, enviando eventos a un pipeline de callback.
 
 ## ⚠️ Advertencias Importantes
 
-*   **Do not modify the `payload` variable structure:** The pipeline relies on a specific structure within the `payload` variable, which is derived from the `notebook_params` pipeline parameter. Changing the structure of the JSON passed in `notebook_params` will likely cause errors in activities like `getContainer`, `getCountry`, `getTableName`, and `getTablePrefix`. For example, if you rename `container_name` to `data_container`, the `getContainer` activity will fail because it won't find the `container_name` property.
-*   **Avoid changing the `file_path` variable concatenation logic:** The `setFilePath` activity constructs the file path based on several variables. Modifying the concatenation logic without understanding its implications can lead to incorrect file paths and data access issues. For instance, removing the `'-datasets'` string will alter the expected folder structure.
-*   **Be cautious when altering the `current_date` variable expression:** The `get current date` activity determines the date used in the file path. Changing the logic, especially the `addHours` function or the date format, can lead to the pipeline looking for data in the wrong date partition.
-*   **Ensure the `DS_Binary_BrsPrjAdls` dataset is correctly configured:** The `checkFolderExists` activity uses this dataset to check for the existence of the data folder. Incorrect configuration of this dataset, such as wrong connection details or file format settings, will cause the pipeline to fail.
+*   **No modifiques la estructura de la variable `payload`:** El pipeline depende de una estructura específica dentro de la variable `payload`, que se deriva del parámetro del pipeline `notebook_params`. Cambiar la estructura del JSON pasado en `notebook_params` probablemente causará errores en actividades como `getContainer`, `getCountry`, `getTableName` y `getTablePrefix`. Por ejemplo, si renombras `container_name` a `data_container`, la actividad `getContainer` fallará porque no encontrará la propiedad `container_name`.
+*   **Evita cambiar la lógica de concatenación de la variable `file_path`:** La actividad `setFilePath` construye la ruta del archivo basándose en varias variables. Modificar la lógica de concatenación sin comprender sus implicaciones puede llevar a rutas de archivos incorrectas y problemas de acceso a datos. Por ejemplo, eliminar la cadena `'-datasets'` alterará la estructura de carpetas esperada.
+*   **Ten cuidado al alterar la expresión de la variable `current_date`:** La actividad `get current date` determina la fecha utilizada en la ruta del archivo. Cambiar la lógica, especialmente la función `addHours` o el formato de la fecha, puede llevar a que el pipeline busque datos en la partición de fecha incorrecta.
+*   **Asegúrate de que el dataset `DS_Binary_BrsPrjAdls` esté configurado correctamente:** La actividad `checkFolderExists` utiliza este dataset para verificar la existencia de la carpeta de datos. Una configuración incorrecta de este dataset, como detalles de conexión o configuración de formato de archivo incorrectos, hará que el pipeline falle.
 
 ## 🐞 Posibles Errores Comunes
 
-*   **Error:** Pipeline fails because the folder does not exist.
-    *   **Cause:** The `checkFolderExists` activity returns `false` because the folder path constructed in the `setFilePath` activity is incorrect, or the data has not yet been loaded into the expected location.
-    *   **Resolution:** Verify the values of the `container`, `country`, `table_prefix`, `table_name`, and `current_date` variables. Ensure that the folder structure in the data lake matches the constructed path.
-*   **Error:** Spark notebook fails to execute.
-    *   **Cause:** The `SparkNotebookPlayer` activity fails due to issues with the Spark pool, notebook configuration, or parameters passed to the notebook.
-    *   **Resolution:** Check the Spark pool status and configuration. Verify that the `notebook_name`, `sparkpool_name`, and `notebook_params` parameters are correctly set. Review the notebook logs for specific error messages.
-*   **Error:** The `payload` variable is not correctly parsed.
-    *   **Cause:** The `getPayloadObject` activity fails to parse the `notebook_params` parameter correctly, often due to incorrect JSON formatting or escaping issues.
-    *   **Resolution:** Ensure that the `notebook_params` parameter is a valid JSON string. Pay close attention to escaping special characters like quotes. Use a JSON validator to verify the format.
-*   **Error:** Incorrect date format being used.
-    *   **Cause:** The `current_date` variable is not in the format expected by the folder structure.
-    *   **Resolution:** Ensure the `formatDateTime` function in the `get current date` activity is outputting the correct format.
+*   **Error:** El pipeline falla porque la carpeta no existe.
+    *   **Causa:** La actividad `checkFolderExists` devuelve `false` porque la ruta de la carpeta construida en la actividad `setFilePath` es incorrecta, o los datos aún no se han cargado en la ubicación esperada.
+    *   **Solución:** Verifica los valores de las variables `container`, `country`, `table_prefix`, `table_name` y `current_date`. Asegúrate de que la estructura de carpetas en el data lake coincida con la ruta construida.
+*   **Error:** El notebook de Spark no se ejecuta.
+    *   **Causa:** La actividad `SparkNotebookPlayer` falla debido a problemas con el pool de Spark, la configuración del notebook o los parámetros pasados al notebook.
+    *   **Solución:** Verifica el estado y la configuración del pool de Spark. Verifica que los parámetros `notebook_name`, `sparkpool_name` y `notebook_params` estén configurados correctamente. Revisa los logs del notebook para obtener mensajes de error específicos.
+*   **Error:** La variable `payload` no se analiza correctamente.
+    *   **Causa:** La actividad `getPayloadObject` no puede analizar el parámetro `notebook_params` correctamente, a menudo debido a un formato JSON incorrecto o problemas de escape.
+    *   **Solución:** Asegúrate de que el parámetro `notebook_params` sea una cadena JSON válida. Presta mucha atención al escape de caracteres especiales como las comillas. Utiliza un validador JSON para verificar el formato.
+*   **Error:** Se está utilizando un formato de fecha incorrecto.
+    *   **Causa:** La variable `current_date` no está en el formato esperado por la estructura de carpetas.
+    *   **Solución:** Asegúrate de que la función `formatDateTime` en la actividad `get current date` esté generando el formato correcto.
+
+## 🧩 Detalles del Notebook NTB\_Gen\_Write\_CSV\_to\_Datalake
+
+Este notebook está diseñado para ingerir genéricamente datos desde un data lake a una base de datos de Synapse Analytics. Soporta formatos de archivo CSV y JSON, aplicación de esquema, encriptación de datos y gestión de particiones.
+
+### Funcionalidad:
+
+*   **Análisis de Parámetros:** Analiza los parámetros pasados desde el pipeline, incluyendo detalles de conexión, información de la tabla y configuración de archivos.
+*   **Carga de Archivos:** Carga dinámicamente datos desde archivos CSV o JSON basándose en los parámetros proporcionados. Soporta la aplicación de esquemas, el manejo de esquemas faltantes y definiciones de esquemas personalizados.
+*   **Encriptación de Datos:** Encripta columnas especificadas utilizando encriptación Fernet con claves almacenadas en Azure Key Vault.
+*   **Preparación de Datos:** Añade columnas `processdate` y `businessdate` a los datos.
+*   **Gestión de Particiones:** Gestiona particiones en la tabla de destino, eliminando las particiones existentes antes de cargar nuevos datos.
+*   **Optimización de Datos:** Optimiza el almacenamiento de datos reconstruyendo las particiones si es necesario.
+*   **Manejo de Errores:** Proporciona mensajes de error detallados y actualizaciones de estado.
+
+### Parámetros Clave:
+
+El notebook depende del parámetro `notebook_params`, que es una cadena JSON que contiene las siguientes secciones:
+
+*   **table\_params:**
+    *   `database_name`: Nombre de la base de datos de destino.
+    *   `table_name`: Nombre de la tabla de destino.
+    *   `business_date`: Nombre de la columna para la fecha de negocio.
+    *   `business_date_fmt`: Formato de la fecha de negocio. Puede ser `yyyy-MM-dd`, `timestamp` o un patrón regex si `business_date` es `filename`.
+    *   `force_field_type`: Opcional. Permite forzar el tipo de un campo. Ejemplo: `[{'field1':'string'},{'field2':'int'}]`
+    *   `force_field_name`: Opcional. Permite forzar el nombre de las columnas. Ejemplo: `['col1','col2']`
+    *   `force_schema`: Opcional. Permite forzar un esquema específico.
+    *   `encrypt_columns`: Lista de columnas para encriptar.
+    *   `flatten`: Opcional. Se utiliza para archivos JSON para especificar la columna a aplanar.
+*   **params:**
+    *   `table_name_prefix`: Prefijo para el nombre de la tabla.
+    *   `container_name`: Nombre del contenedor en Azure Data Lake Storage.
+    *   `file_type`: Tipo de archivo (CSV o JSON).
+    *   `country`: Código del país.
+    *   `file_path`: Ruta a los archivos de datos.
+    *   `process_date`: Fecha del procesamiento de datos.
+    *   `optimize`: Opcional. Si se establece, el notebook optimizará las particiones.
+*   **read\_args:**
+    *   Argumentos pasados al lector de Spark (por ejemplo, `sep`, `header`, `inferSchema`, `multiline`).
+
+### Consideraciones Importantes:
+
+*   **Encriptación de Datos:** Asegúrate de que Azure Key Vault esté configurado correctamente y que el notebook tenga acceso a la clave Fernet.
+*   **Evolución del Esquema:** El notebook asume un esquema consistente entre los archivos. Si el esquema cambia, el notebook puede fallar.
+*   **Particionamiento:** El notebook utiliza `processdate` y `businessdate` para el particionamiento. Asegúrate de que estas columnas estén presentes y formateadas correctamente en los datos.
+*   **Rutas de Archivos:** Verifica que las rutas de los archivos sean correctas y accesibles.
+*   **Dependencias:** El notebook depende de la librería `mssparkutils` y de `TokenLibrary` para acceder a los secretos de Azure Key Vault.
 
 ## 📊 Diagrama de Flujo (Mermaid.js)
 
