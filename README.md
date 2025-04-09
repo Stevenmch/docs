@@ -1,141 +1,97 @@
+A continuación, se presenta la documentación técnica del código proporcionado.
 
-# Pipeline PL_Gen_STG_DTL
+## 📄 Descripción general del proyecto
 
-## ✅ Resumen
+**Nombre del código:** Speech-to-Text Documentation Tool
 
-Este pipeline está diseñado para ejecutar un trabajo de notebook de Spark para el staging de datos de forma genérica, sin depender de un framework de orquestación externo. Construye dinámicamente rutas de archivos, verifica la existencia de datos en una carpeta especificada y ejecuta un notebook de Spark si los datos están presentes. También maneja escenarios de éxito y fracaso, enviando eventos a un pipeline de callback.
+**Versión:** 1.0
 
-## ⚠️ Advertencias Importantes
+**Explicación general:**
 
-*   **No modifiques la estructura de la variable `payload`:** El pipeline depende de una estructura específica dentro de la variable `payload`, que se deriva del parámetro del pipeline `notebook_params`. Cambiar la estructura del JSON pasado en `notebook_params` probablemente causará errores en actividades como `getContainer`, `getCountry`, `getTableName` y `getTablePrefix`. Por ejemplo, si renombras `container_name` a `data_container`, la actividad `getContainer` fallará porque no encontrará la propiedad `container_name`.
-*   **Evita cambiar la lógica de concatenación de la variable `file_path`:** La actividad `setFilePath` construye la ruta del archivo basándose en varias variables. Modificar la lógica de concatenación sin comprender sus implicaciones puede llevar a rutas de archivos incorrectas y problemas de acceso a datos. Por ejemplo, eliminar la cadena `'-datasets'` alterará la estructura de carpetas esperada.
-*   **Ten cuidado al alterar la expresión de la variable `current_date`:** La actividad `get current date` determina la fecha utilizada en la ruta del archivo. Cambiar la lógica, especialmente la función `addHours` o el formato de la fecha, puede llevar a que el pipeline busque datos en la partición de fecha incorrecta.
-*   **Asegúrate de que el dataset `DS_Binary_BrsPrjAdls` esté configurado correctamente:** La actividad `checkFolderExists` utiliza este dataset para verificar la existencia de la carpeta de datos. Una configuración incorrecta de este dataset, como detalles de conexión o configuración de formato de archivo incorrectos, hará que el pipeline falle.
+Este código implementa una herramienta de documentación basada en el reconocimiento de voz. Permite a los usuarios grabar audio, transcribirlo a texto y almacenarlo en un bucket de Amazon S3. Además, ofrece la funcionalidad de realizar preguntas sobre la documentación almacenada utilizando OpenAI.
 
-## 🐞 Posibles Errores Comunes
+**Qué problema resuelve el código:**
 
-*   **Error:** El pipeline falla porque la carpeta no existe.
-    *   **Causa:** La actividad `checkFolderExists` devuelve `false` porque la ruta de la carpeta construida en la actividad `setFilePath` es incorrecta, o los datos aún no se han cargado en la ubicación esperada.
-    *   **Solución:** Verifica los valores de las variables `container`, `country`, `table_prefix`, `table_name` y `current_date`. Asegúrate de que la estructura de carpetas en el data lake coincida con la ruta construida.
-*   **Error:** El notebook de Spark no se ejecuta.
-    *   **Causa:** La actividad `SparkNotebookPlayer` falla debido a problemas con el pool de Spark, la configuración del notebook o los parámetros pasados al notebook.
-    *   **Solución:** Verifica el estado y la configuración del pool de Spark. Verifica que los parámetros `notebook_name`, `sparkpool_name` y `notebook_params` estén configurados correctamente. Revisa los logs del notebook para obtener mensajes de error específicos.
-*   **Error:** La variable `payload` no se analiza correctamente.
-    *   **Causa:** La actividad `getPayloadObject` no puede analizar el parámetro `notebook_params` correctamente, a menudo debido a un formato JSON incorrecto o problemas de escape.
-    *   **Solución:** Asegúrate de que el parámetro `notebook_params` sea una cadena JSON válida. Presta mucha atención al escape de caracteres especiales como las comillas. Utiliza un validador JSON para verificar el formato.
-*   **Error:** Se está utilizando un formato de fecha incorrecto.
-    *   **Causa:** La variable `current_date` no está en el formato esperado por la estructura de carpetas.
-    *   **Solución:** Asegúrate de que la función `formatDateTime` en la actividad `get current date` esté generando el formato correcto.
+El código resuelve el problema de la creación y gestión de documentación de manera eficiente mediante la transcripción de voz a texto y el almacenamiento en la nube. También facilita la búsqueda de información dentro de la documentación a través de consultas a OpenAI.
 
-## 🧩 Detalles del Notebook NTB\_Gen\_Write\_CSV\_to\_Datalake
+## ⚙️ Visión general del sistema
 
-Este notebook está diseñado para ingerir genéricamente datos desde un data lake a una base de datos de Synapse Analytics. Soporta formatos de archivo CSV y JSON, aplicación de esquema, encriptación de datos y gestión de particiones.
-
-### Funcionalidad:
-
-*   **Análisis de Parámetros:** Analiza los parámetros pasados desde el pipeline, incluyendo detalles de conexión, información de la tabla y configuración de archivos.
-*   **Carga de Archivos:** Carga dinámicamente datos desde archivos CSV o JSON basándose en los parámetros proporcionados. Soporta la aplicación de esquemas, el manejo de esquemas faltantes y definiciones de esquemas personalizados.
-*   **Encriptación de Datos:** Encripta columnas especificadas utilizando encriptación Fernet con claves almacenadas en Azure Key Vault.
-*   **Preparación de Datos:** Añade columnas `processdate` y `businessdate` a los datos.
-*   **Gestión de Particiones:** Gestiona particiones en la tabla de destino, eliminando las particiones existentes antes de cargar nuevos datos.
-*   **Optimización de Datos:** Optimiza el almacenamiento de datos reconstruyendo las particiones si es necesario.
-*   **Manejo de Errores:** Proporciona mensajes de error detallados y actualizaciones de estado.
-
-### Parámetros Clave:
-
-El notebook depende del parámetro `notebook_params`, que es una cadena JSON que contiene las siguientes secciones:
-
-*   **table\_params:**
-    *   `database_name`: Nombre de la base de datos de destino.
-    *   `table_name`: Nombre de la tabla de destino.
-    *   `business_date`: Nombre de la columna para la fecha de negocio.
-    *   `business_date_fmt`: Formato de la fecha de negocio. Puede ser `yyyy-MM-dd`, `timestamp` o un patrón regex si `business_date` es `filename`.
-    *   `force_field_type`: Opcional. Permite forzar el tipo de un campo. Ejemplo: `[{'field1':'string'},{'field2':'int'}]`
-    *   `force_field_name`: Opcional. Permite forzar el nombre de las columnas. Ejemplo: `['col1','col2']`
-    *   `force_schema`: Opcional. Permite forzar un esquema específico.
-    *   `encrypt_columns`: Lista de columnas para encriptar.
-    *   `flatten`: Opcional. Se utiliza para archivos JSON para especificar la columna a aplanar.
-*   **params:**
-    *   `table_name_prefix`: Prefijo para el nombre de la tabla.
-    *   `container_name`: Nombre del contenedor en Azure Data Lake Storage.
-    *   `file_type`: Tipo de archivo (CSV o JSON).
-    *   `country`: Código del país.
-    *   `file_path`: Ruta a los archivos de datos.
-    *   `process_date`: Fecha del procesamiento de datos.
-    *   `optimize`: Opcional. Si se establece, el notebook optimizará las particiones.
-*   **read\_args:**
-    *   Argumentos pasados al lector de Spark (por ejemplo, `sep`, `header`, `inferSchema`, `multiline`).
-
-### Consideraciones Importantes:
-
-*   **Encriptación de Datos:** Asegúrate de que Azure Key Vault esté configurado correctamente y que el notebook tenga acceso a la clave Fernet.
-*   **Evolución del Esquema:** El notebook asume un esquema consistente entre los archivos. Si el esquema cambia, el notebook puede fallar.
-*   **Particionamiento:** El notebook utiliza `processdate` y `businessdate` para el particionamiento. Asegúrate de que estas columnas estén presentes y formateadas correctamente en los datos.
-*   **Rutas de Archivos:** Verifica que las rutas de los archivos sean correctas y accesibles.
-*   **Dependencias:** El notebook depende de la librería `mssparkutils` y de `TokenLibrary` para acceder a los secretos de Azure Key Vault.
-
-## 📊 Diagrama de Flujo (Mermaid.js)
+**Arquitectura del sistema:**
 
 ```mermaid
-graph TD;
-    A[getPayloadObject] --> B(getContainer);
-    A --> C(getCountry);
-    A --> D(getTableName);
-    A --> E(getTablePrefix);
-    A --> F[get current date];
-    B & C & D & E & F --> G(setFilePath);
-    G --> H[checkFolderExists];
-    H --> I{DataFolderExists?};
-    I -- Yes --> J[setErrors];
-    J --> K[SparkNotebookPlayer];
-    K -- Succeeded --> L[AddMessageSuccess];
-    K -- Failed --> M[AddMessageFail];
-    L --> N[SendEventOK];
-    M --> O[SendEventKO];
-    N --> P((End));
-    O --> Q[pipelineWithError];
-    Q --> P;
-    I -- No --> R[SendEventOK_noData];
-    R --> P;
+graph LR
+A[Usuario] --> B(Navegador con SpeechRecognition API);
+B --> C{¿Documentar o Preguntar?};
+C -- Documentar --> D(Amazon S3);
+C -- Preguntar --> E(Amazon S3);
+E --> F(Obtener Documentación);
+F --> G(OpenAI API);
+G --> H(Respuesta);
+H --> B;
+B --> I(Lambda Function - Métricas);
+I --> J(AWS API Gateway);
+J --> K(CloudWatch);
 ```
 
-## 🧩 NTB\_Gen\_Write\_CSV\_to\_Datalake Notebook Details
+**Tecnologías utilizadas:**
 
-... (Descripción del notebook como antes) ...
+*   JavaScript
+*   HTML
+*   CSS (implícito en la manipulación del DOM)
+*   SpeechRecognition API
+*   Amazon S3
+*   AWS Cognito
+*   AWS Lambda
+*   OpenAI API
 
-### 📊 Diagrama de Flujo del Notebook (Mermaid.js)
+**Dependencias:**
 
-```mermaid
-graph TD;
-    A[Inicio: Parsear Parametros] --> B[Es JSON];
-    B -- Si --> C[Extraer Parametros];
-    B -- No --> Error[Error: Parametros no validos];
-    C --> D[Definir Argumentos de Lectura];
-    D --> E[Definir Parametros de Tabla];
-    E --> F[Definir Parametros de Entorno];
-    F --> G[Obtener Cuenta de Almacenamiento];
-    G --> H[Obtener Info Archivos Fuente];
-    H --> I[Existe la Tabla];
-    I -- Si --> J[Obtener Esquema Actual];
-    I -- No --> K[Esquema = Nulo];
-    J --> L[Cargar Archivos con Esquema];
-    K --> L;
-    L --> M[Hay Columnas para Encriptar];
-    M -- Si --> N[Encriptar Datos];
-    N --> O[Escribir Archivos Encriptados a Staging];
-    O --> P[Cargar Archivos Encriptados desde Staging];
-    M -- No --> P[Anadir Columna filename];
-    P --> Q[Preparar Datos processdate, businessdate];
-    Q --> R[Definir Estrategia de Carga];
-    R --> S[Crear Tabla];
-    S -- Si --> T[Crear Tabla Externa si es finance];
-    S -- No --> U[Gestionar Particiones Duplicadas];
-    T --> V[Insertar Datos en la Tabla];
-    U --> V;
-    V --> W[Optimizar];
-    W -- Si --> X[Optimizar Particiones];
-    W -- No --> Y[Contar Filas Procesadas];
-    X --> Y;
-    Y --> Z[Eliminar Archivos Temporales si es necesario];
-    Z --> AA[Finalizar: Enviar Mensaje de Estado];
-```
+*   Navegador compatible con la API SpeechRecognition (Chrome, Edge, etc.)
+*   AWS SDK for JavaScript
+*   Cuenta de AWS con permisos para acceder a S3, Cognito e invocar la función Lambda.
+*   API Key de OpenAI configurada en la función Lambda.
+
+**Requisitos del sistema:**
+
+*   Navegador web moderno con soporte para la API SpeechRecognition.
+*   Conexión a Internet.
+*   Cuenta de AWS configurada con los permisos necesarios.
+
+**Prerrequisitos:**
+
+*   Tener una cuenta de AWS configurada con los permisos necesarios para acceder a S3, Cognito e invocar la función Lambda.
+*   Tener una API Key de OpenAI configurada en la función Lambda.
+*   Incluir el SDK de AWS en el HTML.
+
+## 📦 Guía de uso
+
+**Cómo usarlo:**
+
+1.  Asegúrate de tener un navegador compatible con la API SpeechRecognition.
+2.  Abre la página HTML que contiene el código JavaScript.
+3.  Haz clic en el botón "Start" para comenzar a grabar y transcribir tu voz.
+4.  Habla claramente para que la API SpeechRecognition pueda transcribir tu voz con precisión.
+5.  Haz clic en el botón "Stop" para detener la grabación y guardar la transcripción en Amazon S3.
+6.  Haz clic en el botón "Ask Start" para comenzar a grabar tu pregunta.
+7.  Haz clic en el botón "Ask Stop" para detener la grabación y enviar tu pregunta a OpenAI.
+8.  La respuesta de OpenAI se mostrará en la interfaz.
+9.  Para eliminar toda la documentación, haz clic en el icono de la papelera.
+
+**Explicación de los pasos:**
+
+1.  **Inicialización:**
+    *   Se verifica la compatibilidad del navegador con la API SpeechRecognition.
+    *   Se configura el idioma de reconocimiento según la configuración del navegador del usuario.
+    *   Se inicializan variables y se obtienen referencias a los elementos HTML necesarios.
+    *   Se genera un `userId` único y se almacena en el `localStorage` si no existe.
+    *   Se genera un `sessionId` único y se almacena en el `sessionStorage` si no existe.
+    *   Se envía una métrica de inicio de sesión a una función Lambda.
+    *   Se configura AWS con Cognito para acceder a S3.
+2.  **Documentar:**
+    *   Al hacer clic en el botón "Start", se verifica el acceso al micrófono.
+    *   Si el micrófono está disponible, se inicia la grabación y la transcripción.
+    *   El texto transcrito se acumula en la variable `accumulatedText`.
+    *   Al hacer clic en el botón "Stop", se detiene la grabación y se guarda el texto acumulado en Amazon S3.
+    *   Se envía una métrica de documentación a una función Lambda.
+3.  **Preguntar:**
+    *   Al hacer clic en el botón "Ask Start", se verifica el acceso al... (The response was truncated because it has reached the token limit. Try to increase the token limit if you need a longer response.)
