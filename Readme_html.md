@@ -1,83 +1,56 @@
-## 📄 Descripción general del proyecto
+📄 Descripción general del proyecto
+Nombre del código: Reconocimiento de Voz
+Versión: 1.0
+Explicación general:
+Este código HTML define la interfaz de usuario para una aplicación de reconocimiento de voz que permite a los usuarios documentar código o hacer preguntas mediante la voz. La interfaz incluye dos secciones principales: "Document" para la documentación de código y "Ask" para realizar preguntas. También incluye un área para pegar código directamente.
+Qué problema resuelve el código:
+El código proporciona una interfaz para facilitar la documentación de código y la interacción mediante voz, ofreciendo una alternativa a la entrada manual.
 
-**Nombre del código:** Reconocimiento de Voz
-
-**Versión:** 1.0
-
-**Explicación general:**
-
-Este código HTML define la interfaz de usuario para una aplicación de reconocimiento de voz. La aplicación permite a los usuarios documentar código mediante la voz y realizar preguntas también mediante la voz. La interfaz está dividida en dos secciones principales: "Document" y "Ask". La sección "Document" permite grabar audio para documentar el código pegado en el área de texto. La sección "Ask" permite grabar audio para formular preguntas.
-
-**Qué problema resuelve el código:**
-
-El código resuelve el problema de la documentación manual de código, ofreciendo una alternativa basada en la voz para agilizar el proceso. También facilita la formulación de preguntas sobre el código mediante la voz.
-
-## ⚙️ Visión general del sistema
-
-**Arquitectura del sistema:**
-
+⚙️ Visión general del sistema
+Arquitectura del sistema:
 ```mermaid
 graph LR
-    A[User] --> B(HTML UI)
-    B --> C{Document}
-    B --> D{Ask}
-    C --> E[Start Recording]
-    C --> F[Stop Recording]
-    C --> G[Code Input]
-    D --> H[Start Recording]
-    D --> I[Stop Recording]
-    B --> J[JavaScript Logic]
-    J --> K(aws-sdk.min.js)
+A[User] --> B(HTML Interface)
+B --> C{Document}
+B --> D{Ask}
+B --> E[Code Input Area]
+C --> F(Start Recording)
+C --> G(Stop Recording)
+D --> H(Start Recording)
+D --> I(Stop Recording)
+E --> J(Send Code)
 ```
+Tecnologías utilizadas:
+HTML, CSS, JavaScript, AWS SDK
+Dependencias:
+- Fuente Nunito de Google Fonts
+- aws-sdk.min.js
+- my_script.js
+- placeholder-handler.js
+Requisitos del sistema:
+- Navegador web compatible con HTML5 y JavaScript
+- Conexión a Internet (para la fuente Nunito y AWS SDK)
+Prerrequisitos:
+- Tener las librerías aws-sdk.min.js, my_script.js y placeholder-handler.js disponibles en la misma ubicación que el archivo HTML o ajustar las rutas en el código.
+- Configuración de AWS SDK con las credenciales necesarias para acceder a los servicios de AWS (si `my_script.js` utiliza servicios de AWS).
 
-**Tecnologías utilizadas:**
-
-*   HTML
-*   CSS
-*   JavaScript
-*   AWS SDK for JavaScript
-
-**Dependencias:**
-
-*   Archivo `aws-sdk.min.js`: Proporciona acceso a los servicios de Amazon Web Services.
-*   Archivo `my_script.js`: Contiene la lógica principal de la aplicación.
-*   Archivo `placeholder-handler.js`: Maneja la funcionalidad del placeholder en el área de texto.
-*   Google Fonts (Nunito)
-
-**Requisitos del sistema:**
-
-*   Navegador web moderno con soporte para JavaScript y HTML5.
-*   Conexión a Internet (para cargar la fuente Nunito y el AWS SDK).
-
-**Prerrequisitos:**
-
-*   Tener conocimientos básicos de HTML, CSS y JavaScript.
-*   Tener una cuenta de AWS configurada (si se utiliza la funcionalidad de AWS SDK).
-
-## 📦 Guía de uso
-
-**Cómo usarlo:**
-
-1.  Abrir el archivo HTML en un navegador web.
-2.  Para documentar código, pegar el código en el área de texto.
-3.  Hacer clic en el botón "Start Recording" en la sección "Document" para comenzar a grabar la documentación de voz.
-4.  Hacer clic en el botón "Stop Recording" en la sección "Document" para detener la grabación.
-5.  Para hacer una pregunta, hacer clic en el botón "Start Recording" en la sección "Ask" para comenzar a grabar la pregunta.
-6.  Hacer clic en el botón "Stop Recording" en la sección "Ask" para detener la grabación.
-7.  La salida de la transcripción de voz se mostrará en el párrafo con el id "output".
-
-**Explicación de los pasos (entrada, salida, parámetros):**
-
-*   **Entrada:**
-    *   Código pegado en el área de texto (para la sección "Document").
-    *   Grabaciones de voz iniciadas por el usuario.
-*   **Salida:**
-    *   Transcripción de la voz en el párrafo con el id "output".
-*   **Parámetros:**
-    *   No hay parámetros definidos en el código HTML proporcionado. Los parámetros para la funcionalidad de reconocimiento de voz y AWS SDK se gestionan en los archivos JavaScript (`my_script.js`).
-
-**Caso de uso de ejemplo:**
-
+📦 Guía de uso
+Cómo usarlo:
+1.  Abrir el archivo HTML en un navegador web compatible.
+2.  Interactuar con la sección "Document" para iniciar y detener la grabación de voz para la documentación.
+3.  Interactuar con la sección "Ask" para iniciar y detener la grabación de voz para realizar preguntas.
+4.  Pegar código en el área de entrada de código para documentarlo.
+5.  Hacer clic en el botón "Generar Documentación" después de pegar el código.
+Explicación de los pasos:
+*   Entrada:
+    *   Interacción del usuario con los botones "Start Recording" y "Stop Recording" en las secciones "Document" y "Ask".
+    *   Pegado de código en el área de texto designada.
+*   Salida:
+    *   El texto reconocido de la voz se muestra en el elemento con el ID "output".
+    *   La documentación generada a partir del código pegado (la forma en que se muestra esta documentación depende de la lógica implementada en `my_script.js`).
+*   Parámetros:
+    *   No hay parámetros explícitos definidos en el HTML. Los parámetros se gestionan en los archivos JavaScript asociados (`aws-sdk.min.js`, `my_script.js`, `placeholder-handler.js`).
+Caso de uso de ejemplo:
 ```html
 <!DOCTYPE html>
 <html>
@@ -85,24 +58,30 @@ graph LR
     <title>Ejemplo de Reconocimiento de Voz</title>
 </head>
 <body>
-    <button id="startButton">Start Recording</button>
-    <p id="output">Presiona el botón para comenzar.</p>
+    <button id="start">Iniciar</button>
+    <button id="stop">Detener</button>
+    <p id="result">Aquí se mostrará el resultado</p>
+
     <script>
-        document.getElementById('startButton').addEventListener('click', function() {
-            document.getElementById('output').textContent = 'Grabando...';
-            // Aquí iría el código para iniciar la grabación de voz
-            // y transcribirla al párrafo con el id "output"
+        document.getElementById('start').addEventListener('click', function() {
+            document.getElementById('result').textContent = 'Grabando...';
+        });
+
+        document.getElementById('stop').addEventListener('click', function() {
+            document.getElementById('result').textContent = 'Procesando...';
+            // Simulación de procesamiento
+            setTimeout(function() {
+                document.getElementById('result').textContent = 'Texto reconocido: Hola mundo!';
+            }, 2000);
         });
     </script>
 </body>
 </html>
 ```
 
-## 📚 Referencias
-
-*   **HTML:** [https://developer.mozilla.org/en-US/docs/Web/HTML](https://developer.mozilla.org/en-US/docs/Web/HTML)
-*   **CSS:** [https://developer.mozilla.org/en-US/docs/Web/CSS](https://developer.mozilla.org/en-US/docs/Web/CSS)
-*   **JavaScript:** [https://developer.mozilla.org/en-US/docs/Web/JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-*   **AWS SDK for JavaScript:** [https://aws.amazon.com/sdk-for-javascript/](https://aws.amazon.com/sdk-for-javascript/)
-*   **Web Speech API:** [https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
-*   **Drag and Drop API:** [https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API)
+📚 Referencias
+*   HTML Standard: [https://html.spec.whatwg.org/](https://html.spec.whatwg.org/)
+*   CSS Specifications: [https://www.w3.org/Style/CSS/specs.en.html](https://www.w3.org/Style/CSS/specs.en.html)
+*   JavaScript MDN: [https://developer.mozilla.org/en-US/docs/Web/JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+*   AWS SDK for JavaScript: [https://aws.amazon.com/sdk-for-javascript/](https://aws.amazon.com/sdk-for-javascript/)
+*   Web Speech API: [https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
