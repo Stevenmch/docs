@@ -1,61 +1,77 @@
-📄 Descripción general del proyecto
-Nombre del código: Reconocimiento de Voz
-Versión: 1.0
-Explicación general: Interfaz web para la documentación y consulta mediante reconocimiento de voz. Permite grabar audio para documentar código o realizar preguntas.
-Qué problema resuelve el código: Facilita la documentación de código y la interacción mediante voz, ofreciendo una alternativa a la entrada manual.
+### 1. 📄 Descripción general del proyecto
+- **Nombre del código:** Reconocimiento de Voz
+- **Versión:** 1.0
+- **Explicación general:** Este código HTML define la interfaz de usuario para una aplicación web de reconocimiento de voz con dos funcionalidades principales: "Documentar" y "Preguntar". Permite a los usuarios grabar audio y transcribirlo para documentar código o hacer preguntas.
+- **Qué problema resuelve el código:** Facilita la documentación de código y la interacción mediante voz, ofreciendo una alternativa a la entrada manual de texto.
 
-⚙️ Visión general del sistema
-Arquitectura del sistema:
+### 2. ⚙️ Visión general del sistema
+- **Arquitectura del sistema:**
 ```mermaid
 graph LR
-A[User] --> B(Web Interface)
-B --> C{Document}
-B --> D{Ask}
-C --> E[Start Recording]
-C --> F[Stop Recording]
-D --> G[Start Recording]
-D --> H[Stop Recording]
-B --> I[Output]
+A[Usuario] --> B(Navegador Web)
+B --> C{Interfaz HTML}
+C --> D[Documentar]
+C --> E[Preguntar]
+D --> F(Grabación de Audio)
+E --> F
+F --> G(Transcripción)
 ```
-Tecnologías utilizadas: HTML, CSS, JavaScript
-Dependencias:
+- **Tecnologías utilizadas:**
+  - HTML
+  - CSS
+  - JavaScript
+- **Dependencias:**
   - Google Fonts (Nunito)
   - aws-sdk.min.js
   - my_script.js
   - placeholder-handler.js
-Requisitos del sistema:
-  - Navegador web compatible con HTML5 y JavaScript
-Prerrequisitos:
-  - Conexión a Internet para cargar fuentes y scripts externos
+- **Requisitos del sistema:**
+  - Navegador web compatible con HTML5 y JavaScript.
+  - Conexión a Internet (para cargar Google Fonts y los scripts externos).
+  - Micrófono (para la grabación de audio).
+- **Prerrequisitos:**
+  - Tener los archivos JavaScript (aws-sdk.min.js, my_script.js, placeholder-handler.js) disponibles en la misma ubicación o en una ubicación accesible.
 
-📦 Guía de uso
-Cómo usarlo:
-  - Entrada: El usuario interactúa con la interfaz web a través de botones y un área de texto editable.
-  - Salida: La transcripción del audio se muestra en el elemento con el id "output".
-  - Parámetros: No aplica, la interacción se realiza a través de la interfaz gráfica.
-Explicación de los pasos:
-  1. El usuario accede a la página web.
-  2. El usuario puede pegar código en el área de texto provista.
-  3. El usuario puede iniciar la grabación de voz para documentar o preguntar.
-  4. El usuario detiene la grabación.
-  5. El texto transcrito se muestra en el área de salida.
-Caso de uso de ejemplo:
+### 3. 📦 Guía de uso
+- **Cómo usarlo:**
+  1. Abrir el archivo HTML en un navegador web.
+  2. Utilizar la sección "Documentar" para grabar audio relacionado con la documentación del código.
+  3. Utilizar la sección "Preguntar" para grabar audio con preguntas.
+  4. Opcionalmente, pegar código en el área de texto provista para su documentación.
+- **Explicación de los pasos (entrada, salida, parámetros):**
+  - **Entrada:**
+    - Interacción del usuario a través de los botones "Start Recording" y "Stop Recording" en las secciones "Documentar" y "Preguntar".
+    - Entrada de texto opcional a través del área de texto para pegar código.
+  - **Salida:**
+    - Transcripción del audio grabado (el código no muestra dónde se visualiza, pero se asume que `my_script.js` maneja la transcripción y la muestra en la interfaz).
+  - **Parámetros:**
+    - No hay parámetros explícitos en el código HTML. Los parámetros para la grabación y transcripción de audio se manejan en los archivos JavaScript (aws-sdk.min.js y my_script.js).
+- **Caso de uso de ejemplo:**
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ejemplo de Reconocimiento de Voz</title>
+    <title>Ejemplo Mínimo de Reconocimiento de Voz</title>
 </head>
 <body>
-    <button id="startButton">Iniciar Grabación</button>
-    <p id="output">Presiona el botón para iniciar.</p>
+    <button id="recordButton">Grabar</button>
+    <p id="transcription">Aquí aparecerá la transcripción.</p>
+
     <script>
-        document.getElementById('startButton').addEventListener('click', function() {
-            document.getElementById('output').textContent = 'Grabando...';
-            // Aquí iría el código para iniciar la grabación de voz
-            // y actualizar el elemento 'output' con la transcripción.
+        document.getElementById('recordButton').addEventListener('click', function() {
+            document.getElementById('transcription').textContent = "Grabando... (simulado)";
+            // En una implementación real, aquí iría el código para iniciar la grabación y la transcripción.
+            // Este ejemplo solo simula el proceso.
+            setTimeout(function() {
+                document.getElementById('transcription').textContent = "Transcripción simulada: Hola, este es un ejemplo.";
+            }, 3000); // Simula una grabación de 3 segundos.
         });
     </script>
 </body>
 </html>
 ```
+
+### 5. 📚 Referencias
+- Documentación de la API de AWS SDK para JavaScript: [https://aws.amazon.com/sdk-for-javascript/](https://aws.amazon.com/sdk-for-javascript/)
+- Web Speech API: [https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
+- Google Fonts: [https://fonts.google.com/](https://fonts.google.com/)
