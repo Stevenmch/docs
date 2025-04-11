@@ -1,22 +1,23 @@
-### 1. 📄 Descripción general del proyecto
+```markdown
+### 📄 Descripción general del proyecto
 - **Nombre del código:** NTB_Gen_Write_CSV_to_Datalake
-- **Versión:** No especificada
-- **Explicación general:** Este código es un notebook de PySpark diseñado para leer archivos CSV o JSON desde un Data Lake Storage (ADLS), realizar transformaciones y escribir los datos en una tabla particionada en el Data Lake. Incluye funcionalidades para el manejo de esquemas, encriptación de columnas y optimización de particiones.
-- **Qué problema resuelve el código:** Automatiza el proceso de ingestión de datos desde archivos CSV o JSON a tablas particionadas en un Data Lake, manejando la variabilidad en los esquemas, la necesidad de encriptación y la optimización del almacenamiento.
+- **Versión:** N/A
+- **Explicación general:** Este notebook de Synapse Analytics en PySpark ingiere datos desde archivos CSV o JSON en un datalake, con opciones para transformación, encriptación y optimización.
+- **Qué problema resuelve el código:** Automatiza la ingesta de datos desde diferentes fuentes de archivos hacia un datalake, manejando la creación de tablas, el particionamiento, la encriptación de datos sensibles y la optimización del almacenamiento.
 
-### 2. ⚙️ Visión general del sistema
+### ⚙️ Visión general del sistema
 - **Arquitectura del sistema:**
 ```mermaid
 graph LR
-    A[Archivo CSV/JSON en ADLS] --> B(Notebook PySpark);
-    B --> C{Validación y Transformación};
-    C --> D[Tabla Parquet en ADLS];
-    D --> E(Azure Synapse Analytics);
+A[Archivo CSV/JSON] --> B(Spark Dataframe)
+B --> C{Transformación/Encriptación}
+C --> D[Datalake (Parquet)]
+D --> E((Tabla Externa/Interna))
 ```
 - **Tecnologías utilizadas:**
   - PySpark
-  - Azure Data Lake Storage (ADLS)
   - Azure Synapse Analytics
+  - Azure Datalake Storage (ADLS)
   - `mssparkutils`
   - `cryptography`
 - **Dependencias:**
@@ -29,63 +30,42 @@ graph LR
   - `uuid`
   - `cryptography`
 - **Requisitos del sistema:**
-  - Un entorno de Synapse Analytics Workspace configurado con un pool de Spark.
-  - Acceso a una cuenta de Azure Data Lake Storage.
-  - Permisos adecuados para leer y escribir en el Data Lake.
+  - Azure Synapse Analytics Workspace
+  - Azure Datalake Storage Account
+  - Spark Pool configurado en Synapse
 - **Prerrequisitos:**
-  - Configuración de un pool de Spark en Azure Synapse Analytics.
-  - Configuración de las credenciales de acceso a Azure Data Lake Storage.
-  - Instalación de las bibliotecas de Python necesarias (`pyspark`, `cryptography`).
-  - Existencia de un Key Vault para almacenar la clave de encriptación (si se utiliza la funcionalidad de encriptación).
+  - Permisos de acceso al Azure Datalake Storage.
+  - Configuración de un Spark Pool en Azure Synapse Analytics.
+  - Existencia de un Key Vault con la clave de encriptación (si se usa la encriptación).
+  - Configuración de linked services para el Key Vault.
 
-### 3. 📦 Guía de uso
-- **Cómo usarlo:** El notebook se ejecuta en un entorno de Azure Synapse Analytics. Los parámetros de configuración se pasan como un diccionario JSON a través de la variable `notebook_params`.
+### 📦 Guía de uso
+- **Cómo usarlo:** El notebook se ejecuta en un entorno de Synapse Analytics Spark, configurando los parámetros de ingesta a través de la variable `notebook_params`. Este proceso carga los datos desde el origen, los transforma según la configuración, y los escribe en el datalake en formato Parquet.
 - **Explicación de los pasos (entrada, salida, parámetros):**
-  - **Entrada:** Archivos CSV o JSON ubicados en Azure Data Lake Storage.
-  - **Salida:** Tablas Parquet particionadas en Azure Data Lake Storage.
-  - **Parámetros:**
-    - `notebook_params` (JSON string): Contiene los siguientes parámetros:
-      - `read_args` (dict): Parámetros para la lectura de los archivos (ej: `sep`, `header`, `inferSchema`, `multiline`).
-      - `table_params` (dict): Parámetros relacionados con la tabla de destino (ej: `database_name`, `table_name`, `business_date`, `business_date_fmt`, `encrypt_columns`, `flatten`).
-      - `params` (dict): Parámetros relacionados con el entorno (ej: `table_name_prefix`, `account_name`, `container_name`, `file_type`, `country`, `file_path`, `process_date`, `optimize`).
+  1.  **Configurar los parámetros:** Define la variable `notebook_params` como un string en formato JSON que contiene la configuración de la ingesta. Por ejemplo: `notebook_params = "{'notebook_parameters':{'table_params':{'database_name': 'hub_datalake', 'table_name': 'vendors'},'params':{'account_name': 'azusst1voo929', 'container_name': 'temp', 'file_type': 'json', 'file_path': '/esp-datasets/brs-esp-navision/vendors', 'process_date': '20230412'},'read_args':{'sep': ',', 'header': True, 'inferSchema': True, 'multiline': True}}}"`.
+  2.  **Ejecutar las celdas de código:** Ejecuta secuencialmente las celdas del notebook. La celda de parámetros parsea el string JSON y configura las variables necesarias.
+  3.  **Cargar los datos:** El código lee los archivos desde la ruta especificada en `file_path` del contenedor ADLS, utilizando las opciones definidas en `read_args`.
+  4.  **Transformar y escribir los datos:** Los datos se transforman (ej: encriptación) y se escriben en el datalake en formato Parquet, particionados por `processdate` y `businessdate`. Se crea una tabla externa o interna en el metastore de Synapse.
+  5.  **Verificar la ingesta:** Consulta la tabla creada en el datalake para verificar que los datos se hayan ingerido correctamente.
 - **Caso de uso de ejemplo:**
 ```python
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
-import json
-
-# Inicializar SparkSession
-spark = SparkSession.builder.appName("EjemploEscrituraDatalake").getOrCreate()
-
-# Definir los parámetros
-database_name = "mi_basededatos"
-table_name = "mi_tabla"
-container_name = "mi_contenedor"
-account_name = "mi_cuenta_adls"
-file_path = "/ruta/a/mi/archivo.csv"
+# Asumiendo que 'data' es un DataFrame existente
 process_date = "20240120"
+data = data.withColumn("processdate", lit(process_date))
 
-# Crear un DataFrame de ejemplo
-data = [("1", "Juan", "Perez"), ("2", "Maria", "Gomez")]
-df = spark.createDataFrame(data, ["id", "nombre", "apellido"])
-
-# Agregar columnas de auditoría
-df = df.withColumn("processdate", lit(process_date))
-df = df.withColumn("businessdate", lit(process_date))
-
-# Ruta de destino en ADLS
-output_path = f"abfss://{container_name}@{account_name}.dfs.core.windows.net/datalake/{database_name}/{table_name}"
-
-# Escribir el DataFrame como tabla Parquet particionada
-df.write.mode("overwrite").partitionBy("processdate", "businessdate").parquet(output_path)
-
-print(f"Tabla {table_name} escrita exitosamente en {output_path}")
-
-# Detener SparkSession
-spark.stop()
+# Escribir el DataFrame en formato Parquet, particionado por processdate
+output_path = "abfss://container@account.dfs.core.windows.net/path/to/output"
+data.write.mode("overwrite").partitionBy("processdate").parquet(output_path)
 ```
 
-### 5. 📚 Referencias
-- Documentación de PySpark: https://spark.apache.org/docs/latest/api/python/index.html
-- Documentación de Azure Synapse Analytics: https://learn.microsoft.com/en-us/azure/synapse-analytics/
-- Documentación de Azure Data Lake Storage: https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction
+### 🔐 Documentación de la API
+- **Endpoints:** N/A
+- **Formatos de solicitud y respuesta:** N/A
+- **Autenticación y autorización:** El acceso a Azure Datalake Storage se gestiona mediante la identidad del workspace de Synapse, que debe tener los roles adecuados (ej: Storage Blob Data Contributor) en la cuenta de almacenamiento.
+
+### 📚 Referencias
+- [Azure Synapse Analytics documentation](https://learn.microsoft.com/en-us/azure/synapse-analytics/)
+- [PySpark documentation](https://spark.apache.org/docs/latest/api/python/)
+- [Azure Datalake Storage documentation](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction)
+```
