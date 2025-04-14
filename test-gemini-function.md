@@ -1,78 +1,75 @@
-## 📄 Descripción general del proyecto
+1. 📄 Descripción general del proyecto
+   - Nombre del código: CREATE PROC [chl_dwh].[sp_incremental_charge]
+   - Versión: N/A
+   - Explicación general: Este procedimiento almacenado realiza una carga incremental de datos desde un archivo Parquet en Azure Data Lake Storage Gen2 a una tabla en un sistema SQL. El procedimiento gestiona la creación de tablas temporales, la carga de datos, la actualización de la columna `business_date`, y la eliminación de datos duplicados basados en un rango de fechas.
+   - Qué problema resuelve el código: Resuelve el problema de cargar datos nuevos o actualizados en una tabla existente, evitando la duplicación y asegurando que la tabla contenga solo los datos más recientes dentro de un período definido.
 
--   **Nombre del código:** `sp_incremental_charge`
--   **Versión:** N/A
--   **Explicación general:** Este stored procedure realiza una carga incremental de datos desde un datalake (Azure Data Lake Storage) a una tabla en un Synapse SQL Pool. El proceso incluye la creación de una tabla temporal (staging), la carga de datos desde el datalake a esta tabla temporal, la eliminación de datos existentes en la tabla de destino correspondientes al rango de fechas del nuevo lote, y finalmente, la inserción de los datos desde la tabla temporal a la tabla de destino.
--   **Qué problema resuelve el código:** Facilita la actualización de tablas en un data warehouse con datos nuevos o modificados, minimizando el impacto en el rendimiento y asegurando la integridad de los datos. Permite la ingesta de datos desde ficheros Parquet almacenados en Azure Data Lake Storage, realizando la carga de forma incremental basada en una fecha de negocio especificada.
+2. ⚙️ Visión general del sistema
+   - Arquitectura del sistema:
 
-## ⚙️ Visión general del sistema
+   ```mermaid
+   graph LR
+       A[Parquet Files in ADLS Gen2] --> B(sp_incremental_charge);
+       B --> C{Check if STG Table Exists};
+       C -- Yes --> D[Drop STG Table];
+       C -- No --> E[Create STG Table];
+       D --> E;
+       E --> F[Copy Data into STG Table];
+       F --> G[Add business_date Column];
+       G --> H[Update business_date Column];
+       H --> I[Delete Last Days in SQL Pool Table];
+       I --> J[Drop STG Table];
+       J --> K[Insert Data into Principal Table];
+       K --> L[Final Principal Table];
+   ```
 
-```mermaid
-graph LR
-    A[Parámetros JSON] --> B(Extracción de Parámetros);
-    B --> C{Existe tabla STG?};
-    C -- Sí --> D[Eliminar tabla STG];
-    C -- No --> E[Crear tabla STG];
-    D --> E;
-    E --> F[Copiar datos desde ADLS a STG];
-    F --> G[Añadir columna business_date a STG];
-    G --> H[Actualizar business_date en STG];
-    H --> I[Obtener min/max business_date de STG];
-    I --> J[Eliminar datos en tabla principal];
-    J --> K[Copiar datos desde ADLS a tabla principal];
-    K --> L[Eliminar tabla STG];
-```
+   - Tecnologías utilizadas:
+     - SQL
+     - Azure Data Lake Storage Gen2 (ADLS Gen2)
+     - OPENJSON
+     - Parquet
+   - Dependencias:
+     - sp_execute_sql (asumida)
+   - Requisitos del sistema:
+     - Acceso a Azure Data Lake Storage Gen2.
+     - Permisos para crear, modificar y eliminar tablas en el sistema SQL.
+     - Permisos para ejecutar procedimientos almacenados.
+   - Prerrequisitos:
+     - Configuración de la identidad administrada para acceder a ADLS Gen2.
+     - Existencia de la base de datos y esquema correspondientes.
 
--   **Tecnologías utilizadas:**
-    -   SQL Server Stored Procedure
-    -   Azure Synapse Analytics (SQL Pool)
-    -   Azure Data Lake Storage (ADLS)
-    -   `OPENJSON`
-    -   `COPY INTO`
--   **Dependencias:**
-    -   Acceso a Azure Data Lake Storage.
-    -   Permisos para crear y eliminar tablas en el esquema `chl_stg`.
-    -   Permisos para eliminar e insertar datos en la tabla de destino.
--   **Requisitos del sistema:**
-    -   Azure Synapse Analytics (SQL Pool)
-    -   Azure Data Lake Storage Gen2
--   **Prerrequisitos:**
-    -   Configuración de una Managed Identity con permisos de acceso al Azure Data Lake Storage.
-    -   Existencia de la estructura de directorios en ADLS: `https://azusst1voo929.dfs.core.windows.net/datalake/chl/datalake.db/{source_name}_{table_name}/processdate={fecha}/*/*.parquet`
-    -   La tabla de destino debe existir o la opción `AUTO_CREATE_TABLE = 'ON'` debe funcionar correctamente.
+3. 📦 Guía de uso
+   - Cómo usarlo: El procedimiento almacenado se ejecuta proporcionando un string JSON como parámetro de entrada (`@PARAMS`). Este JSON contiene los parámetros necesarios para la carga incremental.       
+   - Explicación de los pasos:
+     1.  El procedimiento recibe un string JSON con los parámetros de configuración.
+     2.  Extrae los valores del JSON a variables SQL.
+     3.  Verifica si la tabla temporal (STG) existe y, si existe, la elimina.
+     4.  Crea una tabla temporal (STG) copiando los datos desde un archivo Parquet en ADLS Gen2.
+     5.  Agrega una columna `business_date` a la tabla temporal.
+     6.  Actualiza la columna `business_date` con el valor proporcionado en los parámetros o con la fecha actual si no se proporciona.
+     7.  Determina el rango de fechas para eliminar datos de la tabla principal.
+     8.  Elimina los datos correspondientes al rango de fechas de la tabla principal.
+     9.  Elimina la tabla temporal (STG).
+     10. Inserta los datos de la tabla temporal en la tabla principal.
+   - Caso de uso de ejemplo:
 
-## 📦 Guía de uso
+   ```sql
+   -- Ejemplo de uso del procedimiento almacenado
+   DECLARE @PARAMS VARCHAR(1000);
+   SET @PARAMS = '{"country_code": "US", "schema_suffix": "dwh", "account_name": "testaccount", "source_name": "sales", "table_name": "transactions", "fecha": "20240101", "business_date": "fecha_creacion"}';
 
--   **Cómo usarlo:** El stored procedure se ejecuta mediante la instrucción `EXEC` en SQL Server, pasando un string JSON como parámetro. Este JSON contiene la información necesaria para la carga incremental, como el código de país, el esquema, el nombre de la cuenta, el origen de los datos, el nombre de la tabla, la fecha de proceso y la columna que representa la fecha de negocio.
--   **Explicación de los pasos (entrada, salida, parámetros):**
-    -   **Entrada:** Un string JSON con la configuración de la carga incremental.
-    -   **Salida:** La tabla de destino actualizada con los nuevos datos.
-    -   **Parámetros:**
-        -   `@PARAMS`: Un string JSON que contiene los siguientes campos:
-            -   `country_code`: Código del país (VARCHAR(3)).
-            -   `schema_suffix`: Sufijo del esquema (VARCHAR(10)).
-            -   `account_name`: Nombre de la cuenta de almacenamiento (VARCHAR(64)).
-            -   `source_name`: Nombre del origen de datos (VARCHAR(10)).
-            -   `table_name`: Nombre de la tabla (VARCHAR(80)).
-            -   `fecha`: Fecha de proceso (formato YYYYMMDD) (VARCHAR(8)).
-            -   `business_date`: Nombre de la columna que representa la fecha de negocio (VARCHAR(100)).
--   **Caso de uso de ejemplo:**
+   EXEC [chl_dwh].[sp_incremental_charge] @PARAMS;
+   ```
 
-```sql
--- Ejemplo de uso del stored procedure
-DECLARE @json_params VARCHAR(1000);
-SET @json_params = '{"country_code": "chl", "schema_suffix": "dwh","account_name":"azusst1voo929","source_name":"tucan","table_name":"tarjetas","fecha":"20230606","business_date":"fecha_creacion"}';      
+4. 🔐 Documentación de la API
+   - Endpoints: Este procedimiento no expone un endpoint HTTP directamente, sino que se ejecuta dentro del entorno SQL.
+   - Formatos de solicitud y respuesta:
+     - Solicitud: Un string JSON que contiene los parámetros de configuración.
+     - Respuesta: No hay una respuesta formal, pero el procedimiento imprime mensajes de estado y errores a través de la función `PRINT`.
+   - Autenticación y autorización: La autenticación y autorización se gestionan a nivel de la base de datos SQL. El usuario que ejecuta el procedimiento debe tener los permisos necesarios para acceder a ADLS Gen2 y modificar las tablas correspondientes.
 
-EXEC chl_dwh.sp_incremental_charge @PARAMS = @json_params;
-```
-
-## 🔐 Documentación de la API
-
-N/A - Este código es un stored procedure, no una API.
-
-## 📚 Referencias
-
--   **OPENJSON (Transact-SQL):** [https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16](https://learn.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16)
--   **COPY INTO (Transact-SQL):** [https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql?view=azure-sqldw-latest](https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql?view=azure-sqldw-latest)
--   **Azure Data Lake Storage Gen2:** [https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction](https://learn.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction)
--   **Managed Identities for Azure Resources:** [https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview)
+5. 📚 Referencias
+   - [Azure Data Lake Storage Gen2](https://docs.microsoft.com/en-us/azure/storage/blobs/data-lake-storage-introduction)
+   - [OPENJSON (Transact-SQL)](https://docs.microsoft.com/en-us/sql/t-sql/functions/openjson-transact-sql?view=sql-server-ver16)
+   - [COPY statement](https://learn.microsoft.com/en-us/sql/t-sql/statements/copy-into-transact-sql?view=azure-sqldw-latest&preserve-view=true)
+   - [Managed Identities for Azure Resources](https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview)
