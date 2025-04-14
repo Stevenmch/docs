@@ -74,7 +74,7 @@ La suma de `a` y `b`.
 const resultado = suma(5, 3); // resultado será 8
 ```
 */
-```
+
 
 ## 🔐 Documentación de la API
 
