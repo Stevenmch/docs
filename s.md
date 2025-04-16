@@ -11,10 +11,25 @@
 
 ```mermaid
 graph LR
-    A[SP_GetLookUpQuerySource_AM] --> B(job_control.source_detail)
-    A --> C(job_control.job_last_run)
-    A --> D(job_control.batch_time)
-    B & C & D --> E(Dynamic SQL Query)
+    A[Inicio del CASE] --> B[¿query_override NO es null?]
+    B -- Sí --> C[Reemplazar tokens en query_override]
+    C --> D[Construir sourceQuery con reemplazos]
+    B -- No --> E[¿delta_column y where_clause son NULL?]
+    
+    E -- Sí --> F[Generar SELECT simple]
+    E -- No --> G[¿delta_column NO es null y where_clause NO es null?]
+    
+    G -- Sí --> H[Generar SELECT con delta_column y where_clause]
+    G -- No --> I[¿delta_column es NULL y where_clause NO es NULL?]
+    
+    I -- Sí --> J[Generar SELECT con where_clause]
+    I -- No --> K[Generar SELECT con delta_column]
+
+    F --> L[Fin del CASE]
+    H --> L
+    J --> L
+    K --> L
+    D --> L
 ```
 
 -   **Tecnologías utilizadas:**
